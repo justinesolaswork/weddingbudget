@@ -415,9 +415,9 @@ async function cloudLoad(){
   if(!sb)return null;
   const {data,error}=await sb.from(SUPABASE_TABLE).select('db,updated_at').eq('site_id',SUPABASE_SITE_ID).maybeSingle();
   if(error)return null;
-  if(!data||!data.db)return null;
+  if(!data)return null;
   const cloudTs=data.updated_at?Date.parse(data.updated_at):0;
-  return {db:data.db,updatedAt:cloudTs||0};
+  return {db:data.db,updatedAt:cloudTs||0,exists:true};
 }
 
 async function cloudSave(currentDB){
@@ -1002,9 +1002,11 @@ let initStarted=false;
 async function init(){
   if(initStarted)return;
   initStarted=true;
+  let hasCloudRow=false;
   // Prefer cloud if available/newer (lets you keep data across refresh/devices)
   try{
     const cloud=await cloudLoad();
+    hasCloudRow=!!cloud;
     const localTs=getLocalUpdatedAt();
     if(cloud && cloud.db && (localTs===0 || (cloud.updatedAt && cloud.updatedAt>localTs))){
       if(Array.isArray(cloud.db.items)&&Array.isArray(cloud.db.accounts)){
@@ -1015,8 +1017,8 @@ async function init(){
     }
   }catch{}
 
-  // Seed only when there’s no local or cloud data
-  if(!db.items.length && !db.accounts.length){
+  // Seed only when there’s no local data AND no cloud row yet
+  if(!hasCloudRow && !db.items.length && !db.accounts.length){
     try{
       const res=await fetch('seed.json',{cache:'no-store'});
       if(!res.ok)throw new Error('seed.json HTTP '+res.status);
