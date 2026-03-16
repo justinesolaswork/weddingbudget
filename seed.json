@@ -1,0 +1,62 @@
+{
+  "items": [
+    {
+      "id": 1001,
+      "name": "Reception Venue",
+      "category": "Venue & Catering",
+      "amount": 150000,
+      "vendor": "Garden Events Place",
+      "payments": [
+        { "id": 2001, "date": "Mar 1, 2026", "amount": 50000, "remark": "Downpayment" },
+        { "id": 2002, "date": "Mar 15, 2026", "amount": 30000, "remark": "2nd installment" }
+      ]
+    },
+    {
+      "id": 1002,
+      "name": "Catering (100 pax)",
+      "category": "Venue & Catering",
+      "amount": 80000,
+      "vendor": "La Fiesta Catering",
+      "payments": []
+    },
+    {
+      "id": 1003,
+      "name": "Wedding Gown",
+      "category": "Attire & Beauty",
+      "amount": 35000,
+      "vendor": "Veluz Reyes Bridal",
+      "payments": [{ "id": 2003, "date": "Feb 20, 2026", "amount": 35000, "remark": "Full payment" }]
+    },
+    {
+      "id": 1004,
+      "name": "Photography Package",
+      "category": "Photography & Video",
+      "amount": 60000,
+      "vendor": "Mayad Studios",
+      "payments": [{ "id": 2004, "date": "Mar 5, 2026", "amount": 20000, "remark": "Booking fee" }]
+    },
+    {
+      "id": 1005,
+      "name": "Floral Arrangements",
+      "category": "Flowers & Decor",
+      "amount": 25000,
+      "vendor": "Flower Atelier",
+      "payments": []
+    }
+  ],
+  "accounts": [
+    {
+      "id": 3001,
+      "name": "BDO Savings",
+      "transactions": [
+        { "id": 4001, "date": "Feb 1, 2026", "amount": 60000, "remark": "Feb salary cut" },
+        { "id": 4002, "date": "Mar 1, 2026", "amount": 20000, "remark": "Mar salary cut" }
+      ]
+    },
+    {
+      "id": 3002,
+      "name": "GCash",
+      "transactions": [{ "id": 4003, "date": "Mar 10, 2026", "amount": 15000, "remark": "Transferred from BDO" }]
+    }
+  ]
+}
