@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Wedding Budget Planner</title>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
   --cream:#faf7f2;--ivory:#f5efe4;--rose:#c4756a;--deep:#3d2b28;
@@ -390,6 +391,53 @@ function unlock(){
 document.getElementById('gatePw').addEventListener('keydown',e=>{if(e.key==='Enter')unlock();});
 
 // ══════════════════════════════════════════
+// SUPABASE (simple cloud persistence)
+// ══════════════════════════════════════════
+// IMPORTANT: This uses the public anon key (fine for connecting), but it is not true "password protection".
+// For real protection, use Supabase Auth + RLS per-user.
+const SUPABASE_URL='https://tbxdnobcumlcpodwuayl.supabase.co';
+const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRieGRub2JjdW1sY3BvZHd1YXlsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2NTkyODAsImV4cCI6MjA4OTIzNTI4MH0.upWA_d-m_YNcVPjF92Q8Q_gzgk8kdgJvWG9NPDbJu5o';
+const SUPABASE_TABLE='wedding_budget_public';
+const SUPABASE_SITE_ID='main'; // change if you want multiple separate budgets
+
+let sb=null;
+try{
+  if(window.supabase && SUPABASE_URL && SUPABASE_ANON_KEY){
+    sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+  }
+}catch{sb=null;}
+
+const LOCAL_UPDATED_KEY='weddingDB4_updatedAt';
+function getLocalUpdatedAt(){return parseInt(localStorage.getItem(LOCAL_UPDATED_KEY)||'0',10)||0;}
+function setLocalUpdatedAt(ts){localStorage.setItem(LOCAL_UPDATED_KEY,String(ts||Date.now()));}
+
+async function cloudLoad(){
+  if(!sb)return null;
+  const {data,error}=await sb.from(SUPABASE_TABLE).select('db,updated_at').eq('site_id',SUPABASE_SITE_ID).maybeSingle();
+  if(error)return null;
+  if(!data||!data.db)return null;
+  const cloudTs=data.updated_at?Date.parse(data.updated_at):0;
+  return {db:data.db,updatedAt:cloudTs||0};
+}
+
+async function cloudSave(currentDB){
+  if(!sb)return;
+  const payload={
+    site_id:SUPABASE_SITE_ID,
+    db:currentDB,
+    updated_at:new Date().toISOString()
+  };
+  await sb.from(SUPABASE_TABLE).upsert(payload,{onConflict:'site_id'});
+}
+
+let cloudSaveTimer=null;
+function scheduleCloudSave(){
+  if(!sb)return;
+  if(cloudSaveTimer)clearTimeout(cloudSaveTimer);
+  cloudSaveTimer=setTimeout(()=>{cloudSave(db);},800);
+}
+
+// ══════════════════════════════════════════
 // DB
 // ══════════════════════════════════════════
 const CAT_COLORS={
@@ -402,7 +450,11 @@ function loadDB(){
   try{const d=JSON.parse(localStorage.getItem('weddingDB4')||'null');if(d)return d;}catch{}
   return{items:[],accounts:[]};
 }
-function saveDB(){localStorage.setItem('weddingDB4',JSON.stringify(db));}
+function saveDB(){
+  localStorage.setItem('weddingDB4',JSON.stringify(db));
+  setLocalUpdatedAt(Date.now());
+  scheduleCloudSave();
+}
 
 let db=loadDB();
 if(!db.accounts)db.accounts=[];
@@ -950,6 +1002,20 @@ let initStarted=false;
 async function init(){
   if(initStarted)return;
   initStarted=true;
+  // Prefer cloud if available/newer (lets you keep data across refresh/devices)
+  try{
+    const cloud=await cloudLoad();
+    const localTs=getLocalUpdatedAt();
+    if(cloud && cloud.db && (localTs===0 || (cloud.updatedAt && cloud.updatedAt>localTs))){
+      if(Array.isArray(cloud.db.items)&&Array.isArray(cloud.db.accounts)){
+        db={items:cloud.db.items,accounts:cloud.db.accounts};
+        localStorage.setItem('weddingDB4',JSON.stringify(db));
+        setLocalUpdatedAt(cloud.updatedAt||Date.now());
+      }
+    }
+  }catch{}
+
+  // Seed only when there’s no local or cloud data
   if(!db.items.length && !db.accounts.length){
     try{
       const res=await fetch('seed.json',{cache:'no-store'});
